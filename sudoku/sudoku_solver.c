@@ -31,8 +31,6 @@ void printMatrix(int matrix[MAX_SIZE][MAX_SIZE], int box_sz)
 
 int solveSudoku(int row, int col, int matrix[MAX_SIZE][MAX_SIZE], int box_sz, int grid_sz, int depth)
 {
-
-    //printf("BUM depth = %d\n",depth);
     if(col > (box_sz - 1)) {
 	  col = 0;
 	  row++;
@@ -54,9 +52,6 @@ int solveSudoku(int row, int col, int matrix[MAX_SIZE][MAX_SIZE], int box_sz, in
 	    int num;
     	for (num = 1; num <= box_sz; num++)
     	{
-            //#pragma omp task firstprivate(num, matrix, row, col, box_sz, grid_sz)
-          { // task1
-            
     	    if (canBeFilled(matrix, row, col, num, box_sz, grid_sz))
     	    {
                 #pragma omp task final(depth > MAX_DEPTH) firstprivate(row, col, matrix, box_sz, grid_sz, depth, num)
@@ -84,7 +79,6 @@ int solveSudoku(int row, int col, int matrix[MAX_SIZE][MAX_SIZE], int box_sz, in
 					}	
                 }//task2
             }
-		}//task1
 	  }
       }
 

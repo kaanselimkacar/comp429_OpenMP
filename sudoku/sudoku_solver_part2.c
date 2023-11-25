@@ -10,6 +10,8 @@
 
 #define MAX_DEPTH 41
 
+int foundSol = 0;
+
 int findEmptyLocation(int matrix[MAX_SIZE][MAX_SIZE], int *row, int *col, int box_size);
 
 int canBeFilled(int matrix[MAX_SIZE][MAX_SIZE], int row, int col, int num, int box_size, int grid_sz);
@@ -31,8 +33,8 @@ void printMatrix(int matrix[MAX_SIZE][MAX_SIZE], int box_sz)
 
 int solveSudoku(int row, int col, int matrix[MAX_SIZE][MAX_SIZE], int box_sz, int grid_sz, int depth)
 {
+	if (foundSol) return 0;
 
-    //printf("BUM depth = %d\n",depth);
     if(col > (box_sz - 1)) {
 	  col = 0;
 	  row++;
@@ -41,50 +43,27 @@ int solveSudoku(int row, int col, int matrix[MAX_SIZE][MAX_SIZE], int box_sz, in
 	    return 1;
     }
     if(matrix[row][col] != EMPTY) {
-        /*
-	    if (solveSudoku(row, col+1, matrix, box_sz, grid_sz, depth+1)) {
-        	printMatrix(matrix, box_sz);
-	    }
-        */
         
-        //#pragma omp task firstprivate(row, col, matrix, box_sz, grid_sz, depth)
 		#pragma omp task final(depth > MAX_DEPTH) firstprivate(row, col, matrix, box_sz, grid_sz, depth) 
 		{
 		
-		//add cancellation point
-		#pragma omp cancellation point taskgroup
 		if (solveSudoku(row, col+1, matrix, box_sz, grid_sz, depth+1)) {
-				#pragma omp cancelation point taskgroup
+				foundSol = 1;
 				#pragma omp critical
 				{
 				printMatrix(matrix, box_sz);
 	        	}
-                //cancel all the tasks
-				#pragma omp cancel taskgroup
-				
-
-                
-                
-				//#pragma omp cancel taskgroup
 			}
         }
-
-
     }
     else {
 	    int num;
     	for (num = 1; num <= box_sz; num++)
     	{
-            //#pragma omp task firstprivate(num, matrix, row, col, box_sz, grid_sz)
-            //#pragma omp task
-          { // task1
-            
     	    if (canBeFilled(matrix, row, col, num, box_sz, grid_sz))
     	    {
                 #pragma omp task final(depth > MAX_DEPTH) firstprivate(row, col, matrix, box_sz, grid_sz, depth, num)
                 { //task2
-				//add cancellation point
-				#pragma omp cancellation point taskgroup
 				if (depth <= MAX_DEPTH) {
 						int matrix2[MAX_SIZE][MAX_SIZE];
 						int i,j;
@@ -93,31 +72,26 @@ int solveSudoku(int row, int col, int matrix[MAX_SIZE][MAX_SIZE], int box_sz, in
 						    matrix2[i][j] = matrix[i][j];
 			    	matrix2[row][col] = num;
                      if (solveSudoku(row, col+1, matrix2, box_sz, grid_sz, depth+1)){
-						#pragma omp cancelation point taskgroup
+						foundSol = 1;
 						#pragma omp critical
 						{
 						printMatrix(matrix2, box_sz);
 						}
-						#pragma omp cancel taskgroup
 				   }    
                 }
-				       
 				else{
 						matrix[row][col] = num;
 						if (solveSudoku(row, col+1, matrix, box_sz, grid_sz, depth+1)){
-							#pragma omp cancelation point taskgroup
+							foundSol = 1;
 							#pragma omp critical
 							{
 							printMatrix(matrix,box_sz);
 							}
-							#pragma omp cancel taskgroup
 						}
 						matrix[row][col] = EMPTY;
 				}
                 }//task2
-				       
             }
-		}//task1
 	  }
       }
 
@@ -221,13 +195,10 @@ int main(int argc, char const *argv[])
     {
         #pragma omp single
         {
-	    #pragma omp taskgroup
             solveSudoku(0, 0, matrix, box_sz, grid_sz, 1);
         }
        
     }
-	//print omp_get_cancelation
-	printf("Number of tasks canceled: %d\n", omp_get_cancellation());
     printf("Elapsed time: %lf\n", omp_get_wtime() - time1);
 	return 0;
 }
